@@ -67,188 +67,183 @@
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const trainingPlanBuilder = document.getElementById('training-plan-builder');
-        const addWorkoutDayBtn = document.getElementById('add-workout-day-btn');
-        let workoutDayCount = 0;
+document.addEventListener('DOMContentLoaded', function () {
+    // --- VARIÁVEIS DO DOM (MUITAS ESTAVAM FALTANDO) ---
+    const trainingPlanBuilder = document.getElementById('training-plan-builder');
+    const addWorkoutDayBtn = document.getElementById('add-workout-day-btn');
+    const savePlanBtn = document.getElementById('save-plan-btn'); // Botão principal que abre o modal
+    
+    // Variáveis do Modal de Salvar
+    const saveModal = document.getElementById('save-modal');
+    const cancelSaveBtn = document.getElementById('cancel-save-btn');
+    const confirmSaveBtn = document.getElementById('confirm-save-btn');
+    const fileNameInput = document.getElementById('file-name-input');
+    
+    // Variáveis do Modal de Limpar e do Toast (assumindo que eles existem no seu HTML)
+    const clearPlanBtn = document.getElementById('clear-plan-btn');
+    const clearModal = document.getElementById('clear-modal');
+    const cancelClearBtn = document.getElementById('cancel-clear-btn');
+    const confirmClearBtn = document.getElementById('confirm-clear-btn');
 
-        const initialWorkouts = []; // Array de treinos iniciais agora está vazio
+    let workoutDayCount = 0;
 
-        function addWorkoutDay(title = '') {
-            workoutDayCount++;
-            const workoutId = `workout-day-${workoutDayCount}`;
-            const workoutHTML = `
-                <div id="${workoutId}" class="bg-card p-6 rounded-xl shadow-lg">
-                    <div class="flex justify-between items-center mb-4">
-                        <input type="text" value="${title}" placeholder="Nome do Treino (Ex: Treino A: Peito)" class="text-2xl font-bold text-white w-full border-b-2 bg-transparent border-gray-700 focus:outline-none focus:border-main-red">
-                        <button class="remove-btn text-red-500 hover:text-red-400 font-bold ml-4" data-target="${workoutId}">✕</button>
-                    </div>
-                    <div class="exercises-list space-y-4"></div>
-                    <button class="add-exercise-btn mt-4 w-full bg-gray-700 text-slate-100 font-semibold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
-                        + Adicionar Exercício
-                    </button>
+    // --- FUNÇÕES PRINCIPAIS ---
+
+    function showToast(message, type = 'error') {
+        // Esta função estava sendo chamada mas não existia no seu código.
+        // Adicionei uma versão básica dela.
+        const toast = document.getElementById('toast-notification');
+        if (!toast) return; // Se o elemento do toast não existir, não faz nada.
+        const toastMessage = document.getElementById('toast-message');
+        
+        if (toastMessage) toastMessage.textContent = message;
+        toast.classList.remove('bg-toast-error', 'bg-toast-success');
+        toast.classList.add(type === 'success' ? 'bg-toast-success' : 'bg-toast-error');
+        
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    function addWorkoutDay(title = '') {
+        workoutDayCount++;
+        const workoutId = `workout-day-${workoutDayCount}`;
+        const workoutHTML = `
+            <div id="${workoutId}" class="bg-card p-6 rounded-xl shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <input type="text" value="${title}" placeholder="Nome do Treino (Ex: Treino A: Peito)" class="text-2xl font-bold text-white w-full border-b-2 bg-transparent border-gray-700 focus:outline-none focus:border-main-red">
+                    <button class="remove-btn text-red-500 hover:text-red-400 font-bold ml-4" data-target="${workoutId}">✕</button>
                 </div>
-            `;
-            trainingPlanBuilder.insertAdjacentHTML('beforeend', workoutHTML);
-            return document.getElementById(workoutId);
+                <div class="exercises-list space-y-4"></div>
+                <button class="add-exercise-btn mt-4 w-full bg-gray-700 text-slate-100 font-semibold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
+                    + Adicionar Exercício
+                </button>
+            </div>
+        `;
+        trainingPlanBuilder.insertAdjacentHTML('beforeend', workoutHTML);
+        return document.getElementById(workoutId);
+    }
+
+    function addExercise(exercisesList, data = { name: '', reps: '', video: '' }) {
+        const exerciseId = `exercise-${Date.now()}`;
+        const repsOptions = Array.from({length: 12}, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
+        let descansoOptions = '';
+        for (let i = 10; i <= 120; i += 10) {
+            descansoOptions += `<option value="${i}s">${i}s</option>`;
         }
 
-        function addExercise(exercisesList, data = { name: '', reps: '', video: '' }) {
-            const exerciseId = `exercise-${Date.now()}`;
-            const repsOptions = Array.from({length: 12}, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
-            let descansoOptions = '';
-            for (let i = 10; i <= 120; i += 10) {
-                descansoOptions += `<option value="${i}s">${i}s</option>`;
-            }
-
-            const exerciseHTML = `
-                <div id="${exerciseId}" class="p-4 bg-card-light rounded-lg">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                        <div class="md:col-span-2">
-                            <div class="flex justify-between items-center">
-                                <input type="text" value="${data.name || ''}" placeholder="Nome do Exercício" class="exercise-name font-bold w-full bg-transparent focus:outline-none border-b border-gray-600 focus:border-main-red">
-                                <div class="flex items-center ml-2 flex-shrink-0">
-                                    <button class="toggle-video-btn text-main-red hover:text-red-400 p-1 text-xl">▶</button>
-                                    <button class="remove-btn text-red-500 hover:text-red-400 p-1 text-xl font-bold" data-target="${exerciseId}">✕</button>
-                                </div>
+        const exerciseHTML = `
+            <div id="${exerciseId}" class="p-4 bg-card-light rounded-lg">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    <div class="md:col-span-2">
+                        <div class="flex justify-between items-center">
+                            <input type="text" value="${data.name || ''}" placeholder="Nome do Exercício" class="exercise-name font-bold w-full bg-transparent focus:outline-none border-b border-gray-600 focus:border-main-red">
+                            <div class="flex items-center ml-2 flex-shrink-0">
+                                <button class="toggle-video-btn text-main-red hover:text-red-400 p-1 text-xl">▶</button>
+                                <button class="remove-btn text-red-500 hover:text-red-400 p-1 text-xl font-bold" data-target="${exerciseId}">✕</button>
                             </div>
-                            
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mt-3">
-                                <div>
-                                    <label class="text-xs text-slate-400 block mb-1">Séries</label>
-                                    <select class="series-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1">
-                                        <option value="">Nenhum</option><option value="1x">1x</option><option value="2x">2x</option><option value="3x">3x</option><option value="4x">4x</option><option value="5x">5x</option><option value="6x">6x</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-xs text-slate-400 block mb-1">Reps</label>
-                                    <select class="reps-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1">
-                                        <option value="">Nenhum</option>${repsOptions}<option value="15">15</option><option value="20">20</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-xs text-slate-400 block mb-1">Range</label>
-                                    <select class="range-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1">
-                                        <option value="">Nenhum</option><option value="6-8 reps">6-8</option><option value="8-10 reps">8-10</option><option value="10-12 reps">10-12</option><option value="12-15 reps">12-15</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-xs text-slate-400 block mb-1">Carga</label>
-                                    <select class="carga-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1">
-                                        <option value="">Nenhum</option><option value="Baixa">Baixa</option><option value="Moderada">Moderada</option><option value="Alta">Alta</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-xs text-slate-400 block mb-1">Descanso</label>
-                                    <select class="descanso-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1">
-                                        <option value="">Nenhum</option>${descansoOptions}
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <input type="text" value="${data.video || ''}" placeholder="Cole o link do vídeo do YouTube aqui" class="video-link text-xs w-full bg-transparent mt-3 pt-2 border-t border-gray-700 focus:outline-none">
                         </div>
-                        <div class="video-player-wrapper md:col-span-1 hidden"></div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mt-3">
+                            <div><label class="text-xs text-slate-400 block mb-1">Séries</label><select class="series-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1"><option value="">Nenhum</option><option value="1x">1x</option><option value="2x">2x</option><option value="3x">3x</option><option value="4x">4x</option><option value="5x">5x</option><option value="6x">6x</option></select></div>
+                            <div><label class="text-xs text-slate-400 block mb-1">Reps</label><select class="reps-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1"><option value="">Nenhum</option>${repsOptions}<option value="15">15</option><option value="20">20</option></select></div>
+                            <div><label class="text-xs text-slate-400 block mb-1">Range</label><select class="range-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1"><option value="">Nenhum</option><option value="6-8 reps">6-8</option><option value="8-10 reps">8-10</option><option value="10-12 reps">10-12</option><option value="12-15 reps">12-15</option></select></div>
+                            <div><label class="text-xs text-slate-400 block mb-1">Carga</label><select class="carga-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1"><option value="">Nenhum</option><option value="Baixa">Baixa</option><option value="Moderada">Moderada</option><option value="Alta">Alta</option></select></div>
+                            <div><label class="text-xs text-slate-400 block mb-1">Descanso</label><select class="descanso-select w-full bg-gray-700 border border-gray-600 text-white text-sm rounded p-1"><option value="">Nenhum</option>${descansoOptions}</select></div>
+                        </div>
+                        <input type="text" value="${data.video || ''}" placeholder="Cole o link do vídeo do YouTube aqui" class="video-link text-xs w-full bg-transparent mt-3 pt-2 border-t border-gray-700 focus:outline-none">
                     </div>
+                    <div class="video-player-wrapper md:col-span-1 hidden"></div>
                 </div>
-            `;
-            exercisesList.insertAdjacentHTML('beforeend', exerciseHTML);
+            </div>
+        `;
+        exercisesList.insertAdjacentHTML('beforeend', exerciseHTML);
+    }
+
+    function getYoutubeEmbedUrl(url) {
+        if (!url) return null; let videoId = '';
+        try {
+            const urlObj = new URL(url);
+            if (urlObj.hostname === 'youtu.be') videoId = urlObj.pathname.slice(1);
+            else if (urlObj.hostname.includes('youtube.com')) videoId = urlObj.searchParams.get('v');
+        } catch (e) { return null; }
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+    }
+
+    function populateInitialData() {
+        trainingPlanBuilder.innerHTML = '';
+        addWorkoutDay(); // Adiciona um dia de treino em branco
+    }
+
+    // --- EVENT LISTENERS ---
+
+    addWorkoutDayBtn.addEventListener('click', () => addWorkoutDay());
+    
+    // Este listener agora usa a técnica de "event delegation" para os botões de exercício
+    trainingPlanBuilder.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-exercise-btn')) {
+            addExercise(e.target.previousElementSibling);
         }
-        
-        function getYoutubeEmbedUrl(url) {
-            if (!url) return null; let videoId = '';
-            try {
-                const urlObj = new URL(url);
-                if (urlObj.hostname === 'youtu.be') videoId = urlObj.pathname.slice(1);
-                else if (urlObj.hostname.includes('youtube.com')) videoId = urlObj.searchParams.get('v');
-            } catch (e) { return null; }
-            return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+        if (e.target.classList.contains('remove-btn')) {
+            document.getElementById(e.target.dataset.target)?.remove();
         }
-
-        trainingPlanBuilder.addEventListener('click', function(e) {
-            if (e.target.classList.contains('add-exercise-btn')) {
-                addExercise(e.target.previousElementSibling);
-            }
-            if (e.target.classList.contains('remove-btn')) {
-                document.getElementById(e.target.dataset.target)?.remove();
-            }
-            if (e.target.classList.contains('toggle-video-btn')) {
-                 const exerciseDiv = e.target.closest('.p-4');
-                 const videoWrapper = exerciseDiv.querySelector('.video-player-wrapper');
-                 const videoLinkInput = exerciseDiv.querySelector('.video-link');
-                 const embedUrl = getYoutubeEmbedUrl(videoLinkInput.value);
-                 if (videoWrapper.classList.contains('hidden')) {
-                     if (embedUrl) {
-                        videoWrapper.innerHTML = `<div class="video-container"><iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-                        videoWrapper.classList.remove('hidden');
-                        e.target.textContent = '▼';
-                     } else { alert('Por favor, insira um link válido do YouTube.'); }
-                 } else {
-                    videoWrapper.classList.add('hidden');
-                    videoWrapper.innerHTML = '';
-                    e.target.textContent = '▶';
-                 }
-            }
-        });
-
-        addWorkoutDayBtn.addEventListener('click', () => addWorkoutDay());
-
-        function populateInitialData() {
-            trainingPlanBuilder.innerHTML = '';
-            if (initialWorkouts.length === 0) {
-                addWorkoutDay(); // Adiciona um dia de treino em branco se não houver dados iniciais
+        if (e.target.classList.contains('toggle-video-btn')) {
+            const exerciseDiv = e.target.closest('.p-4');
+            const videoWrapper = exerciseDiv.querySelector('.video-player-wrapper');
+            const videoLinkInput = exerciseDiv.querySelector('.video-link');
+            const embedUrl = getYoutubeEmbedUrl(videoLinkInput.value);
+            if (videoWrapper.classList.contains('hidden')) {
+                if (embedUrl) {
+                    videoWrapper.innerHTML = `<div class="video-container"><iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+                    videoWrapper.classList.remove('hidden');
+                    e.target.textContent = '▼';
+                } else { 
+                    showToast('Por favor, insira um link válido do YouTube.'); 
+                }
             } else {
-                initialWorkouts.forEach(workoutData => {
-                    const currentWorkoutDiv = addWorkoutDay(workoutData.title);
-                    const exercisesListDiv = currentWorkoutDiv.querySelector('.exercises-list');
-                    workoutData.exercises.forEach(exerciseData => addExercise(exercisesListDiv, exerciseData));
-                });
+                videoWrapper.classList.add('hidden');
+                videoWrapper.innerHTML = '';
+                e.target.textContent = '▶';
             }
         }
-        
+    });
 
-            // ... dentro do <script> do seu index.html
+    // A lógica de salvar e exportar, agora DENTRO do DOMContentLoaded
+    savePlanBtn.addEventListener('click', () => {
+        if(saveModal) saveModal.classList.remove('hidden');
+    });
 
-    confirmSaveBtn.addEventListener('click', () => {
+    if(cancelSaveBtn) cancelSaveBtn.addEventListener('click', () => saveModal.classList.add('hidden'));
+
+    if(confirmSaveBtn) confirmSaveBtn.addEventListener('click', () => {
         const finalFileName = fileNameInput.value.trim() ? `${fileNameInput.value.trim()}.html` : 'meu-plano-de-treino.html';
         
-        // 1. Coletar os dados do treino do formulário (DOM)
         const workoutPlanData = [];
         document.querySelectorAll('#training-plan-builder > div').forEach(workoutDiv => {
             const workoutTitleInput = workoutDiv.querySelector('input[type="text"]');
             if (!workoutTitleInput) return;
-
             const exercises = [];
             workoutDiv.querySelectorAll('.exercises-list > div').forEach(item => {
                 exercises.push({
-                    name: item.querySelector('.exercise-name').value,
-                    series: item.querySelector('.series-select').value,
-                    reps: item.querySelector('.reps-select').value,
-                    range: item.querySelector('.range-select').value,
-                    carga: item.querySelector('.carga-select').value,
-                    descanso: item.querySelector('.descanso-select').value,
+                    name: item.querySelector('.exercise-name').value, series: item.querySelector('.series-select').value,
+                    reps: item.querySelector('.reps-select').value, range: item.querySelector('.range-select').value,
+                    carga: item.querySelector('.carga-select').value, descanso: item.querySelector('.descanso-select').value,
                     video: item.querySelector('.video-link').value
                 });
             });
             workoutPlanData.push({ title: workoutTitleInput.value, exercises: exercises });
         });
 
-        // 2. Enviar os dados para o servidor usando a API Fetch
         fetch('/api/generate-plan', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(workoutPlanData),
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('A resposta do servidor não foi OK');
-            }
-            return response.text(); // Pega o HTML retornado como texto
+            if (!response.ok) throw new Error('A resposta do servidor não foi OK');
+            return response.text();
         })
         .then(htmlContent => {
-            // 3. Receber o HTML e forçar o download no navegador
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -258,31 +253,48 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            saveModal.classList.add('hidden');
+            if(saveModal) saveModal.classList.add('hidden');
             showToast('Plano exportado com sucesso!', 'success');
         })
         .catch(error => {
             console.error('Erro ao exportar o plano:', error);
             showToast('Falha ao contatar o servidor.');
-            saveModal.classList.add('hidden');
+            if(saveModal) saveModal.classList.add('hidden');
         });
     });
-    ```
 
----
+    // --- CÓDIGO DE INICIALIZAÇÃO ---
+    // Chamada da função que estava faltando
+    populateInitialData(); 
+});
+</script>
 
-### Passo 5: Testando Tudo Localmente
+<div id="save-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-card p-8 rounded-xl shadow-2xl w-full max-w-md">
+        <h3 class="text-2xl font-bold mb-4 text-white">Salvar Plano de Treino</h3>
+        <p class="text-slate-400 mb-6">Digite o nome do arquivo (sem a extensão .html).</p>
+        <input type="text" id="file-name-input" class="w-full bg-gray-700 border border-gray-600 text-white rounded p-3 mb-6 focus:ring-2 ring-main-red outline-none" value="meu-plano-de-treino">
+        <div class="flex justify-end space-x-4">
+            <button id="cancel-save-btn" class="px-6 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors">Cancelar</button>
+            <button id="confirm-save-btn" class="px-6 py-2 rounded-lg bg-main-red hover:bg-main-red-dark transition-colors font-bold">Salvar</button>
+        </div>
+    </div>
+</div>
 
-Antes de hospedar, vamos garantir que tudo funciona.
+<div id="clear-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-card p-8 rounded-xl shadow-2xl w-full max-w-md">
+        <h3 class="text-2xl font-bold mb-4 text-white">Limpar Plano de Treino?</h3>
+        <p class="text-slate-400 mb-6">Esta ação é irreversível e removerá todos os dias de treino e exercícios que você adicionou.</p>
+        <div class="flex justify-end space-x-4">
+            <button id="cancel-clear-btn" class="px-6 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors">Cancelar</button>
+            <button id="confirm-clear-btn" class="px-6 py-2 rounded-lg bg-red-700 hover:bg-red-600 transition-colors font-bold">Sim, Limpar Tudo</button>
+        </div>
+    </div>
+</div>
 
-1.  No seu terminal, na pasta do projeto, inicie o servidor:
-    ```bash
-    node server.js
-    
+<div id="toast-notification" class="fixed bottom-5 right-5 text-white py-3 px-5 rounded-lg shadow-lg transform translate-y-20 opacity-0 z-50">
+    <p id="toast-message">Mensagem aqui!</p>
+</div>
 
-        populateInitialData();
-    });
-    </script>
 </body>
 </html>
-
