@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const admin = require('firebase-admin');
 
 // Cria a aplicação Express
 const app = express();
