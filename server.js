@@ -18,6 +18,38 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 1. A ROTA (O "PORTÃO DE ENTRADA" DA API)
 //    Quando o front-end mandar uma requisição para '/api/generate-plan',
 //    o código dentro deste bloco será executado.
+
+// NOVO ENDPOINT PARA REGISTRO
+app.post('/api/register', async (req, res) => {
+    // Pega o e-mail e a senha que o front-end enviou
+    const { email, password } = req.body;
+    
+    try {
+        // 1. Usa o Firebase Admin para criar o usuário no sistema de Autenticação
+        const userRecord = await admin.auth().createUser({
+            email: email,
+            password: password,
+        });
+
+        // 2. Salva as informações desse novo usuário no banco de dados Firestore
+        const db = admin.firestore();
+        await db.collection('users').doc(userRecord.uid).set({
+            email: userRecord.email,
+            status: 'pendente', // O status inicial é sempre 'pendente'
+            role: 'user',       // Um papel padrão
+            createdAt: admin.firestore.FieldValue.serverTimestamp() // Salva a data de criação
+        });
+
+        // 3. Envia uma resposta de sucesso de volta para o front-end
+        res.status(201).send({ message: 'Usuário registrado com sucesso! Aguardando aprovação do administrador.' });
+
+    } catch (error) {
+        // Se algo der errado (ex: e-mail já existe), envia uma mensagem de erro
+        console.error('Erro no registro:', error);
+        res.status(500).send({ message: 'Erro ao registrar usuário.', error: error.message });
+    }
+});
+
 app.post('/api/generate-plan', (req, res) => {
     // Os dados do treino enviados pelo front-end chegam em req.body
     const workoutData = req.body;
