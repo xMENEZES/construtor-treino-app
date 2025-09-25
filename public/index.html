@@ -137,12 +137,23 @@
 
         // --- LÓGICA DE AUTENTICAÇÃO ---
         if(registerBtn) registerBtn.addEventListener('click', () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            createUserWithEmailAndPassword(auth, email, password)
-                .then(userCredential => console.log("Usuário registrado:", userCredential.user.email))
-                .catch(error => alert(error.message));
-        });
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    // Ele deve chamar o '/api/register' usando fetch
+    fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message); // Apenas mostra um alerta
+    })
+    .catch(error => {
+        alert('Ocorreu um erro ao tentar registrar.');
+    });
+});
 
         if(loginBtn) loginBtn.addEventListener('click', () => {
             const email = emailInput.value;
